@@ -8,17 +8,17 @@ import (
 	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
 )
 
-// HumanAgent implements the Agent interface for a human participant.
-type HumanAgent struct {
+// LLMAgent implements the Agent interface for an AI language model participant.
+type LLMAgent struct {
 	id           string
 	tenant       string
 	capabilities []string
-	executor     *executor.HumanExecutor
+	executor     *executor.LLMExecutor
 }
 
-// NewHumanAgent creates a new human agent with the given identity and executor.
-func NewHumanAgent(id, tenant string, capabilities []string, exec *executor.HumanExecutor) *HumanAgent {
-	return &HumanAgent{
+// NewLLMAgent creates a new LLM agent with the given identity and executor.
+func NewLLMAgent(id, tenant string, capabilities []string, exec *executor.LLMExecutor) *LLMAgent {
+	return &LLMAgent{
 		id:           id,
 		tenant:       tenant,
 		capabilities: capabilities,
@@ -27,35 +27,35 @@ func NewHumanAgent(id, tenant string, capabilities []string, exec *executor.Huma
 }
 
 // ID returns the agent's unique identifier.
-func (a *HumanAgent) ID() string {
+func (a *LLMAgent) ID() string {
 	return a.id
 }
 
-// Type returns the agent type ("human").
-func (a *HumanAgent) Type() string {
-	return "human"
+// Type returns the agent type ("ai").
+func (a *LLMAgent) Type() string {
+	return "ai"
 }
 
 // Tenant returns the agent's tenant.
-func (a *HumanAgent) Tenant() string {
+func (a *LLMAgent) Tenant() string {
 	return a.tenant
 }
 
 // Capabilities returns the list of capabilities this agent can handle.
-func (a *HumanAgent) Capabilities() []string {
+func (a *LLMAgent) Capabilities() []string {
 	return a.capabilities
 }
 
-// Execute delegates task execution to the human executor and returns the result.
-func (a *HumanAgent) Execute(ctx context.Context, task *awmv1.TaskAssignment) (map[string]interface{}, error) {
+// Execute delegates task execution to the LLM executor and returns the result.
+func (a *LLMAgent) Execute(ctx context.Context, task *awmv1.TaskAssignment) (map[string]interface{}, error) {
 	if a.executor == nil {
-		return nil, fmt.Errorf("human executor not initialized")
+		return nil, fmt.Errorf("LLM executor not initialized")
 	}
 	return a.executor.Execute(ctx, task)
 }
 
 // Validate ensures the agent is properly configured.
-func (a *HumanAgent) Validate() error {
+func (a *LLMAgent) Validate() error {
 	if a.id == "" {
 		return fmt.Errorf("agent ID is required")
 	}

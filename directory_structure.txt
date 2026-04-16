@@ -1,0 +1,35 @@
+services/awm-cli/
+├── cmd/
+│   └── awm-cli/
+│       └── main.go                     # Application entry point; wires dependencies and starts the agent.
+├── internal/
+│   ├── agent/
+│   │   ├── interface.go                # Agent interface defining the contract for all agent types.
+│   │   ├── human.go                    # Human agent implementation (CLI interaction, local dashboard).
+│   │   ├── llm.go                      # LLM/AI agent implementation (calls local/remote models).
+│   │   ├── service.go                  # Service agent implementation (automated, scriptable, no user).
+│   │   └── registry.go                 # Registers the agent with the orchestrator and manages the task loop.
+│   ├── client/
+│   │   ├── grpc.go                     # gRPC client wrapper; handles connection, authentication, and RPC calls.
+│   │   ├── stream.go                   # Bidirectional stream handler for real‑time task assignment.
+│   │   └── poller.go                   # Fallback polling mechanism for agents that cannot stream.
+│   ├── config/
+│   │   └── config.go                   # Configuration loading and validation (from YAML and environment).
+│   ├── executor/
+│   │   ├── executor.go                 # Executor interface for task execution.
+│   │   ├── human_executor.go           # Human executor (interactive terminal prompts).
+│   │   ├── llm_executor.go             # LLM executor (calls AI providers like Ollama, OpenAI).
+│   │   └── service_executor.go         # Service executor (runs scripts, calls webhooks, etc.).
+│   ├── dashboard/
+│   │   └── server.go                   # Optional local web dashboard for human agents (embedded React UI).
+│   └── auth/
+│       └── token.go                    # Token management for authenticating with the orchestrator.
+├── pkg/                                # Public packages (if any) – currently empty.
+├── configs/
+│   └── agent.yaml.example              # Example configuration file with all possible options.
+├── scripts/
+│   └── entrypoint.sh                   # Container entrypoint (if deployed as container).
+├── Dockerfile                          # Multi‑stage Docker build for the CLI.
+├── Makefile                            # Build, test, and run targets.
+├── go.mod
+└── go.sum

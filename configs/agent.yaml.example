@@ -1,23 +1,61 @@
+# AWM CLI Agent Configuration
+# Copy this file to configs/agent.yaml and adjust the values to match your environment.
+
 agent:
+  # Unique identifier for this agent (required)
   id: "human-alice"
+  
+  # Agent type: "human", "ai", or "service" (required)
   type: "human"
+  
+  # Tenant name this agent belongs to (required)
   tenant: "acme"
+  
+  # List of capabilities this agent can handle
+  # Used by the orchestrator to route appropriate tasks
   capabilities:
     - "estimate_story"
     - "review_code"
+    - "write_documentation"
+  
+  # Use bidirectional streaming for task assignment (recommended)
+  # If false, the agent will poll periodically for tasks
   use_stream: true
 
+# Connection details for the AWM Orchestrator
 orchestrator:
+  # gRPC address of the orchestrator (required)
   address: "localhost:9091"
 
+# Authentication settings
 auth:
+  # Bearer token for authenticating with the orchestrator
+  # Leave empty if no authentication is required (development only)
   token: ""
 
-# ai:
-#   provider: "ollama"
-#   model: "llama3"
-#   endpoint: "http://localhost:11434"
+# AI configuration – required only when agent.type is "ai"
+ai:
+  # LLM provider: "ollama", "openai"
+  provider: "ollama"
+  
+  # Model name to use
+  model: "llama3"
+  
+  # API endpoint for the provider
+  # For Ollama: http://localhost:11434
+  # For OpenAI: https://api.openai.com
+  endpoint: "http://localhost:11434"
+  
+  # API key (required for OpenAI; optional for Ollama)
+  api_key: ""
+  
+  # Request timeout as a Go duration string (e.g., "30s", "1m")
+  timeout: "60s"
 
+# Local web dashboard – optional, only for human agents
 dashboard:
+  # Enable the local dashboard
   enabled: false
+  
+  # Port for the dashboard HTTP server
   port: 3000
