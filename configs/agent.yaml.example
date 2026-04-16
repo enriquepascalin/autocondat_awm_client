@@ -1,0 +1,23 @@
+agent:
+  id: "human-alice"
+  type: "human"
+  tenant: "acme"
+  capabilities:
+    - "estimate_story"
+    - "review_code"
+  use_stream: true
+
+orchestrator:
+  address: "localhost:9091"
+
+auth:
+  token: ""
+
+# ai:
+#   provider: "ollama"
+#   model: "llama3"
+#   endpoint: "http://localhost:11434"
+
+dashboard:
+  enabled: false
+  port: 3000
