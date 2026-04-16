@@ -15,5 +15,3 @@ require (
 	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 )
-
-replace github.com/enriquepascalin/awm-orchestrator => ../awm-orchestrator

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/enriquepascalin/awm-cli/internal/executor"
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // HumanAgent implements the Agent interface for a human participant.

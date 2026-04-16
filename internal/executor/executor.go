@@ -3,7 +3,7 @@ package executor
 import (
 	"context"
 
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // Executor defines the contract for task execution implementations.

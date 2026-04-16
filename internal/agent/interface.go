@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // Agent defines the contract that all agent types (human, AI, service) must fulfill.

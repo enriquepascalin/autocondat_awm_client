@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

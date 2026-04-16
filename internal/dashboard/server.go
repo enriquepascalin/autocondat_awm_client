@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 //go:embed static/*

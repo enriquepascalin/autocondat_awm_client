@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // Poller periodically polls the orchestrator for pending tasks using the unary PollTask RPC.

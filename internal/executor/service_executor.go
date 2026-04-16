@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // ServiceExecutor executes automated tasks such as shell scripts, HTTP requests,

@@ -8,7 +8,7 @@ import (
 
 	"github.com/enriquepascalin/awm-cli/internal/client"
 	"github.com/enriquepascalin/awm-cli/internal/executor"
-	awmv1 "github.com/enriquepascalin/awm-orchestrator/internal/proto/awm/v1"
+	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // Registry handles the lifecycle of an agent's connection to the orchestrator.
