@@ -5,54 +5,52 @@ import (
 	"os"
 	"time"
 
+	"github.com/enriquepascalin/awm-cli/internal/executor"
 	"gopkg.in/yaml.v3"
 )
 
 // Config represents the complete CLI configuration.
 type Config struct {
-	Agent        AgentConfig        `yaml:"agent"`
-	Orchestrator OrchestratorConfig `yaml:"orchestrator"`
-	Auth         AuthConfig         `yaml:"auth"`
-	AI           AIConfig           `yaml:"ai,omitempty"`
-	Dashboard    DashboardConfig    `yaml:"dashboard,omitempty"`
+	Agent   AgentConfig          `yaml:"agent"`
+	Workers []WorkerConfig       `yaml:"workers"`
+	Auth    AuthConfig           `yaml:"auth"`
+	LLM     executor.LLMConfig   `yaml:"llm,omitempty"`
+	Log     LogConfig            `yaml:"log,omitempty"`
 }
 
-// AgentConfig holds the identity and behavior of the agent.
+// AgentConfig holds the identity and behaviour of this client process.
+// All worker connections share the same identity.
 type AgentConfig struct {
 	ID           string   `yaml:"id"`
-	Type         string   `yaml:"type"` // "human", "ai", "service"
+	Type         string   `yaml:"type"`      // "human", "ai", "service"
 	Tenant       string   `yaml:"tenant"`
 	Capabilities []string `yaml:"capabilities"`
 	UseStream    bool     `yaml:"use_stream"`
 }
 
-// OrchestratorConfig holds the connection details for the orchestrator.
-type OrchestratorConfig struct {
-	Address string `yaml:"address"`
+// WorkerConfig describes a single worker endpoint this agent connects to.
+type WorkerConfig struct {
+	Name    string     `yaml:"name"`    // human-readable label, e.g. "jira-workflow"
+	Address string     `yaml:"address"` // host:port of the worker gRPC server
+	Auth    AuthConfig `yaml:"auth,omitempty"` // overrides top-level auth when set
 }
 
 // AuthConfig holds authentication credentials.
 type AuthConfig struct {
-	Token string `yaml:"token"`
+	Token        string `yaml:"token,omitempty"`
+	ClientID     string `yaml:"client_id,omitempty"`
+	ClientSecret string `yaml:"client_secret,omitempty"`
+	TokenURL     string `yaml:"token_url,omitempty"`
 }
 
-// AIConfig holds configuration for AI agents.
-type AIConfig struct {
-	Provider string        `yaml:"provider"` // "ollama", "openai"
-	Model    string        `yaml:"model"`
-	Endpoint string        `yaml:"endpoint"`
-	APIKey   string        `yaml:"api_key,omitempty"`
-	Timeout  time.Duration `yaml:"timeout"`
+// LogConfig controls log output format and verbosity.
+type LogConfig struct {
+	Format string `yaml:"format"` // "json" (default) or "text"
+	Level  string `yaml:"level"`  // "debug", "info" (default), "warn", "error"
 }
 
-// DashboardConfig holds configuration for the local web dashboard.
-type DashboardConfig struct {
-	Enabled bool `yaml:"enabled"`
-	Port    int  `yaml:"port"`
-}
-
-// Load reads the configuration from a YAML file (path from AWM_CONFIG or default)
-// and overrides with environment variables. It returns a validated Config.
+// Load reads the configuration from a YAML file (path from AWM_CONFIG env var,
+// defaulting to configs/agent.yaml) and applies environment variable overrides.
 func Load() (*Config, error) {
 	path := os.Getenv("AWM_CONFIG")
 	if path == "" {
@@ -69,7 +67,17 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	// Environment variable overrides
+	applyEnvOverrides(&cfg)
+
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+// applyEnvOverrides replaces config values with environment variables when set.
+func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("AWM_AGENT_ID"); v != "" {
 		cfg.Agent.ID = v
 	}
@@ -79,34 +87,30 @@ func Load() (*Config, error) {
 	if v := os.Getenv("AWM_AGENT_TENANT"); v != "" {
 		cfg.Agent.Tenant = v
 	}
-	if v := os.Getenv("AWM_ORCHESTRATOR_ADDR"); v != "" {
-		cfg.Orchestrator.Address = v
-	}
 	if v := os.Getenv("AWM_AUTH_TOKEN"); v != "" {
 		cfg.Auth.Token = v
 	}
-	if v := os.Getenv("AWM_AI_PROVIDER"); v != "" {
-		cfg.AI.Provider = v
+	if v := os.Getenv("AWM_LLM_PROVIDER"); v != "" {
+		cfg.LLM.Provider = v
 	}
-	if v := os.Getenv("AWM_AI_MODEL"); v != "" {
-		cfg.AI.Model = v
+	if v := os.Getenv("AWM_LLM_MODEL"); v != "" {
+		cfg.LLM.Model = v
 	}
-	if v := os.Getenv("AWM_AI_ENDPOINT"); v != "" {
-		cfg.AI.Endpoint = v
+	if v := os.Getenv("AWM_LLM_ENDPOINT"); v != "" {
+		cfg.LLM.Endpoint = v
 	}
-	if v := os.Getenv("AWM_AI_API_KEY"); v != "" {
-		cfg.AI.APIKey = v
+	if v := os.Getenv("AWM_LLM_API_KEY"); v != "" {
+		cfg.LLM.APIKey = v
 	}
-
-	// Validate required fields
-	if err := cfg.Validate(); err != nil {
-		return nil, err
+	if v := os.Getenv("AWM_LOG_LEVEL"); v != "" {
+		cfg.Log.Level = v
 	}
-
-	return &cfg, nil
+	if v := os.Getenv("AWM_LOG_FORMAT"); v != "" {
+		cfg.Log.Format = v
+	}
 }
 
-// Validate ensures the configuration is complete and consistent.
+// Validate ensures the configuration is complete and internally consistent.
 func (c *Config) Validate() error {
 	if c.Agent.ID == "" {
 		return fmt.Errorf("agent.id is required")
@@ -117,25 +121,43 @@ func (c *Config) Validate() error {
 	if c.Agent.Tenant == "" {
 		return fmt.Errorf("agent.tenant is required")
 	}
-	if c.Orchestrator.Address == "" {
-		return fmt.Errorf("orchestrator.address is required")
+	if len(c.Workers) == 0 {
+		return fmt.Errorf("at least one entry under workers is required")
+	}
+	for i, w := range c.Workers {
+		if w.Address == "" {
+			return fmt.Errorf("workers[%d].address is required", i)
+		}
 	}
 	if c.Agent.Type == "ai" {
-		if c.AI.Provider == "" {
-			return fmt.Errorf("ai.provider is required for ai agent")
+		if c.LLM.Provider == "" {
+			return fmt.Errorf("llm.provider is required for ai agent")
 		}
-		if c.AI.Model == "" {
-			return fmt.Errorf("ai.model is required for ai agent")
+		if c.LLM.Model == "" {
+			return fmt.Errorf("llm.model is required for ai agent")
 		}
-		if c.AI.Endpoint == "" {
-			return fmt.Errorf("ai.endpoint is required for ai agent")
+		if c.LLM.Endpoint == "" {
+			return fmt.Errorf("llm.endpoint is required for ai agent")
 		}
-		if c.AI.Timeout == 0 {
-			c.AI.Timeout = 60 * time.Second
+		if c.LLM.Timeout == 0 {
+			c.LLM.Timeout = 60 * time.Second
 		}
 	}
-	if c.Dashboard.Enabled && c.Dashboard.Port == 0 {
-		c.Dashboard.Port = 3000
+	// Apply log defaults
+	if c.Log.Format == "" {
+		c.Log.Format = "json"
+	}
+	if c.Log.Level == "" {
+		c.Log.Level = "info"
 	}
 	return nil
+}
+
+// AuthForWorker returns the auth config for a specific worker, falling back
+// to the top-level auth when the worker has no override.
+func (c *Config) AuthForWorker(w WorkerConfig) AuthConfig {
+	if w.Auth.Token != "" || w.Auth.ClientID != "" {
+		return w.Auth
+	}
+	return c.Auth
 }

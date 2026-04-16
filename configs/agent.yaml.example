@@ -1,61 +1,95 @@
-# AWM CLI Agent Configuration
-# Copy this file to configs/agent.yaml and adjust the values to match your environment.
+# AWM-CLI Agent Configuration Example
+# Copy this file to configs/agent.yaml and adjust to your environment.
+# All values can be overridden via environment variables (see comments).
 
+# ─── Agent Identity ───────────────────────────────────────────────────────────
 agent:
-  # Unique identifier for this agent (required)
-  id: "human-alice"
-  
-  # Agent type: "human", "ai", or "service" (required)
+  # Unique identifier for this agent instance. Must be unique within the tenant.
+  # Env: AWM_AGENT_ID
+  id: "admin-001"
+
+  # Agent type determines which executor is used.
+  # Options: "human" | "ai" | "service"
+  # Env: AWM_AGENT_TYPE
   type: "human"
-  
-  # Tenant name this agent belongs to (required)
+
+  # Tenant this agent belongs to.
+  # Env: AWM_AGENT_TENANT
   tenant: "acme"
-  
-  # List of capabilities this agent can handle
-  # Used by the orchestrator to route appropriate tasks
+
+  # Capabilities advertised to the orchestrator.
+  # The orchestrator will only assign tasks whose required capabilities match.
   capabilities:
-    - "estimate_story"
-    - "review_code"
-    - "write_documentation"
-  
-  # Use bidirectional streaming for task assignment (recommended)
-  # If false, the agent will poll periodically for tasks
+    - "task-review"
+    - "approval"
+    - "escalation"
+
+  # true  → bidirectional gRPC stream (lower latency, persistent connection)
+  # false → unary PollTask calls (simpler, better for ephemeral/cron agents)
   use_stream: true
 
-# Connection details for the AWM Orchestrator
-orchestrator:
-  # gRPC address of the orchestrator (required)
-  address: "localhost:9091"
+# ─── Worker Endpoints ─────────────────────────────────────────────────────────
+# One entry per workflow worker this agent connects to.
+# The agent registers with each worker independently using the same identity.
+workers:
+  - name: "main-workflow"
+    address: "localhost:50051"
+    # Per-worker auth override (leave empty to use the top-level auth token).
+    # auth:
+    #   token: "worker-specific-token"
 
-# Authentication settings
+  # Uncomment to connect to a second worker simultaneously:
+  # - name: "reporting-workflow"
+  #   address: "reporting-worker.internal:50051"
+
+# ─── Authentication ───────────────────────────────────────────────────────────
 auth:
-  # Bearer token for authenticating with the orchestrator
-  # Leave empty if no authentication is required (development only)
+  # Static bearer token. Used for all workers unless overridden per-worker.
+  # Env: AWM_AUTH_TOKEN
   token: ""
 
-# AI configuration – required only when agent.type is "ai"
-ai:
-  # LLM provider: "ollama", "openai"
-  provider: "ollama"
-  
-  # Model name to use
-  model: "llama3"
-  
-  # API endpoint for the provider
-  # For Ollama: http://localhost:11434
-  # For OpenAI: https://api.openai.com
-  endpoint: "http://localhost:11434"
-  
-  # API key (required for OpenAI; optional for Ollama)
-  api_key: ""
-  
-  # Request timeout as a Go duration string (e.g., "30s", "1m")
-  timeout: "60s"
+  # OAuth2 client credentials (alternative to static token).
+  # When set, a refreshing token provider is used automatically.
+  # client_id: ""
+  # client_secret: ""
+  # token_url: "https://auth.example.com/oauth/token"
 
-# Local web dashboard – optional, only for human agents
-dashboard:
-  # Enable the local dashboard
-  enabled: false
-  
-  # Port for the dashboard HTTP server
-  port: 3000
+# ─── LLM Configuration (ai agents only) ──────────────────────────────────────
+# Required when agent.type is "ai". Ignored otherwise.
+llm:
+  # LLM provider. Options: "ollama" | "openai"
+  # Env: AWM_LLM_PROVIDER
+  provider: "ollama"
+
+  # Model name as understood by the provider (e.g. "llama3", "gpt-4o").
+  # Env: AWM_LLM_MODEL
+  model: "llama3"
+
+  # Base URL of the LLM API.
+  # Env: AWM_LLM_ENDPOINT
+  endpoint: "http://localhost:11434"
+
+  # API key (required for OpenAI, optional for Ollama).
+  # Env: AWM_LLM_API_KEY
+  # api_key: ""
+
+  # Per-request timeout. Uses Go duration syntax: 30s, 2m, etc.
+  timeout: 60s
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+log:
+  # Output format. Options: "json" (default, structured) | "text" (human-readable)
+  # Env: AWM_LOG_FORMAT
+  format: "json"
+
+  # Minimum log level. Options: "debug" | "info" | "warn" | "error"
+  # Env: AWM_LOG_LEVEL
+  level: "info"
+
+# ─── TLS (optional) ───────────────────────────────────────────────────────────
+# TLS is configured via environment variables rather than the config file
+# to keep certificate paths out of version-controlled files.
+#
+# AWM_TLS_CA_CERT     — path to CA certificate (enables TLS)
+# AWM_TLS_CLIENT_CERT — path to client certificate (enables mTLS)
+# AWM_TLS_CLIENT_KEY  — path to client private key (required with CLIENT_CERT)

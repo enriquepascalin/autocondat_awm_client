@@ -11,32 +11,61 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enriquepascalin/awm-cli/internal/connector"
 	awmv1 "github.com/enriquepascalin/awm-cli/internal/proto/awm/v1"
 )
 
 // ServiceExecutor executes automated tasks such as shell scripts, HTTP requests,
-// or external API calls without requiring human or AI interaction.
+// named integration connectors, or external API calls.
 type ServiceExecutor struct {
 	httpClient *http.Client
+	connectors *connector.Registry
 }
 
 // NewServiceExecutor creates a new service executor with default settings.
 func NewServiceExecutor() *ServiceExecutor {
 	return &ServiceExecutor{
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+		connectors: connector.NewRegistry(),
 	}
 }
 
+// RegisterConnector adds a named connector to this executor.
+// Call at startup before the agent begins consuming tasks.
+func (s *ServiceExecutor) RegisterConnector(c connector.Connector) {
+	s.connectors.Register(c)
+}
+
 // Execute inspects the task input to determine the action type and performs it.
-// Supported action types (detected via "action" or "type" field in input):
-//   - "http": performs an HTTP request
-//   - "script": executes a shell script
-//   - "webhook": alias for HTTP POST
-//   - default: treats the entire input as a script command
+//
+// If the input contains a "connector" field that matches a registered connector
+// name, execution is delegated to that connector.  The "action" field (if any)
+// is passed as the connector action; all other input fields become its params.
+//
+// Generic action types (when no connector is specified):
+//   - "http" / "webhook": performs an HTTP request
+//   - "script" / "shell" / "command": executes a shell script
+//   - default: falls back to HTTP if a "url" is present, otherwise script
 func (s *ServiceExecutor) Execute(ctx context.Context, task *awmv1.TaskAssignment) (map[string]interface{}, error) {
 	inputMap := task.Input.AsMap()
+
+	// Named connector path.
+	if name, _ := inputMap["connector"].(string); name != "" {
+		conn, err := s.connectors.Get(name)
+		if err != nil {
+			return nil, err
+		}
+		action, _ := inputMap["action"].(string)
+		// Build params: everything except the routing fields themselves.
+		params := make(map[string]interface{}, len(inputMap))
+		for k, v := range inputMap {
+			if k != "connector" && k != "action" {
+				params[k] = v
+			}
+		}
+		return conn.Execute(ctx, action, params)
+	}
+
 	action, _ := inputMap["action"].(string)
 	if action == "" {
 		action, _ = inputMap["type"].(string)
