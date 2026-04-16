@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AWM Agent Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { color: #1a1a2e; }
+    #tasks { margin-top: 1rem; }
+    .task { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem; }
+    .task.pending { border-left: 4px solid #f59e0b; }
+    .task.running { border-left: 4px solid #3b82f6; }
+    .task.completed { border-left: 4px solid #10b981; }
+    .task.failed { border-left: 4px solid #ef4444; }
+    pre { background: #f4f4f5; padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+    button { padding: 0.4rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+  </style>
+</head>
+<body>
+  <h1>AWM Agent Dashboard</h1>
+  <p>Pending tasks for human review:</p>
+  <button class="btn-primary" onclick="loadTasks()">Refresh</button>
+  <div id="tasks"></div>
+
+  <script>
+    async function loadTasks() {
+      const res = await fetch('/api/tasks');
+      const tasks = await res.json();
+      const container = document.getElementById('tasks');
+      if (!tasks || tasks.length === 0) {
+        container.innerHTML = '<p>No tasks yet.</p>';
+        return;
+      }
+      container.innerHTML = tasks.map(t => `
+        <div class="task ${t.status}">
+          <strong>${t.activity_name}</strong> <span style="color:#888">(${t.status})</span>
+          <pre>${JSON.stringify(t.input, null, 2)}</pre>
+          ${t.status === 'pending' ? `
+            <textarea id="result-${t.id}" rows="3" placeholder='{"key": "value"}'></textarea><br/>
+            <button class="btn-primary" onclick="submitTask('${t.id}', false)">Complete</button>
+            <button class="btn-danger" onclick="submitTask('${t.id}', true)" style="margin-left:8px">Fail</button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function submitTask(id, fail) {
+      const raw = document.getElementById('result-' + id).value;
+      let body;
+      if (fail) {
+        body = { error: raw || 'rejected by agent' };
+      } else {
+        try { body = { result: JSON.parse(raw) }; }
+        catch { body = { result: { output: raw } }; }
+      }
+      await fetch('/api/tasks/' + id + '/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      loadTasks();
+    }
+
+    loadTasks();
+    setInterval(loadTasks, 5000);
+  </script>
+</body>
+</html>

@@ -126,7 +126,7 @@ func NewTokenProviderFromConfig(staticToken, clientID, clientSecret, tokenURL st
 	}
 	if clientID != "" && clientSecret != "" && tokenURL != "" {
 		// Initial token fetch
-		initialToken, ttl, err := fetchOAuth2Token(context.Background(), clientID, clientSecret, tokenURL)
+		initialToken, _, err := fetchOAuth2Token(context.Background(), clientID, clientSecret, tokenURL)
 		if err != nil {
 			return nil, fmt.Errorf("initial OAuth2 token fetch: %w", err)
 		}
